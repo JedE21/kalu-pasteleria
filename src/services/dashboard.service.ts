@@ -8,8 +8,11 @@ const customersTables = ["clientes", "customers"];
 const alertsTables = ["alertas", "alerts"];
 
 function asNumber(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value.replace(",", ".")) || 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
   return 0;
 }
 
@@ -26,7 +29,8 @@ function pickNumber(row: RawRecord, keys: string[]): number {
 
 function pickString(row: RawRecord, keys: string[], fallback = "Sin clasificar"): string {
   const key = keys.find((candidate) => typeof row[candidate] === "string");
-  return key ? String(row[key]) : fallback;
+  const value = key ? String(row[key]).trim() : "";
+  return value || fallback;
 }
 
 function pickDate(row: RawRecord): Date | null {
@@ -47,7 +51,8 @@ function groupSum(rows: RawRecord[], labelKeys: string[], valueKeys: string[]): 
   });
 
   return Array.from(grouped.entries())
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name, value: Number.isFinite(value) ? value : 0 }))
+    .filter((point) => point.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 }
@@ -72,7 +77,7 @@ function buildSalesTimeline(rows: RawRecord[]): ChartPoint[] {
     }
   });
 
-  return days.map(({ name, value }) => ({ name, value }));
+  return days.map(({ name, value }) => ({ name, value: Number.isFinite(value) ? value : 0 }));
 }
 
 export class DashboardService {
@@ -108,7 +113,8 @@ export class DashboardService {
       .reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0);
 
     const todayOrders = orderRows.filter((row) => pickDate(row)?.toISOString().slice(0, 10) === todayKey).length;
-    const averageTicket = salesRows.length ? salesRows.reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0) / salesRows.length : 0;
+    const averageTicketRaw = salesRows.length ? salesRows.reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0) / salesRows.length : 0;
+    const averageTicket = Number.isFinite(averageTicketRaw) ? averageTicketRaw : 0;
     const newCustomers = customerRows.filter((row) => pickDate(row)?.toISOString().slice(0, 7) === monthKey).length;
     const activeProducts = productRows.filter((row) => row.activo === true || row.active === true || row.estado === "activo" || row.status === "active").length || productRows.length;
 
