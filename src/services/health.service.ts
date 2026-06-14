@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import type { HealthCheck } from "@/types/database";
 import { withTimeout } from "@/utils/with-timeout";
 
@@ -27,9 +28,19 @@ async function timedCheck(name: string, check: () => Promise<string>): Promise<H
 
 export async function getSystemHealth(): Promise<HealthCheck[]> {
   const supabase = createSupabaseServerClient("anon");
+  const supabaseHost = env.supabaseUrl ? new URL(env.supabaseUrl).host : "";
+  const projectRef = supabaseHost.split(".")[0] ?? "";
+
+  const projectCheck: HealthCheck = {
+    name: "Proyecto Supabase",
+    status: projectRef ? "operational" : "warning",
+    latencyMs: null,
+    message: projectRef ? `Conectado a ${projectRef}` : "VITE_SUPABASE_URL no esta configurado."
+  };
 
   if (!supabase) {
     return [
+      projectCheck,
       { name: "Supabase", status: "warning", latencyMs: null, message: "Variables de entorno no configuradas." },
       { name: "PostgreSQL", status: "warning", latencyMs: null, message: "Conexion pendiente de configuracion." },
       { name: "Auth", status: "warning", latencyMs: null, message: "Cliente Supabase no inicializado." },
@@ -38,8 +49,8 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
     ];
   }
 
-    return Promise.all([
-      timedCheck("Supabase", async () => {
+  const checks = await Promise.all([
+    timedCheck("Supabase", async () => {
       console.info("[Supabase] Health check consultando tabla", { table: "configuracion_empresa" });
       const { count, error } = await withTimeout<CountResult>(
         supabase.from("configuracion_empresa").select("*", { head: true, count: "exact" }) as PromiseLike<CountResult>,
@@ -77,4 +88,6 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
     }),
     timedCheck("Realtime", async () => "Realtime configurado en cliente Supabase.")
   ]);
+
+  return [projectCheck, ...checks];
 }
