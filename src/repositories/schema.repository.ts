@@ -12,7 +12,7 @@ export class SchemaRepository {
         connected: false,
         tables: [],
         relations: [],
-        warnings: ["Supabase no esta configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY."]
+        warnings: ["Supabase no esta configurado. Define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Netlify."]
       };
     }
 
