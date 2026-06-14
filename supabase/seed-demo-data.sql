@@ -100,6 +100,10 @@ begin
   join pg_class t on t.oid = a.attrelid
   join pg_namespace n on n.oid = t.relnamespace
   left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+  left join pg_constraint fk
+    on fk.conrelid = t.oid
+   and fk.contype = 'f'
+   and a.attnum = any(fk.conkey)
   where n.nspname = 'public'
     and t.relname = p_table
     and a.attnum > 0
@@ -107,6 +111,7 @@ begin
     and a.attnotnull
     and a.atttypid = 'uuid'::regtype
     and d.adbin is null
+    and fk.oid is null
     and not payload ? a.attname;
 
   for required_col in
@@ -325,6 +330,7 @@ begin
   cliente_email_col := pg_temp.kalu_first_column('clientes', array['email', 'correo', 'correo_electronico']);
 
   payload := jsonb_build_object(
+    'nombres', 'Ana',
     'nombre', 'Ana',
     'apellidos', 'Torres',
     'apellido', 'Torres',
@@ -339,6 +345,7 @@ begin
   cliente_ana := coalesce(pg_temp.kalu_find_pk_value('clientes', cliente_email_col, 'ana.demo@kalu.local'), pg_temp.kalu_first_pk_value('clientes'));
 
   payload := jsonb_build_object(
+    'nombres', 'Luis',
     'nombre', 'Luis',
     'apellidos', 'Ramirez',
     'apellido', 'Ramirez',
@@ -356,6 +363,7 @@ begin
 
   payload := jsonb_build_object(
     'nombre', 'Torta Tres Leches Demo',
+    'nombres', 'Torta Tres Leches Demo',
     'descripcion', 'Bizcocho artesanal con mezcla de tres leches.',
     'precio', 65,
     'precio_venta', 65,
@@ -372,6 +380,7 @@ begin
 
   payload := jsonb_build_object(
     'nombre', 'Brownie Artesanal Demo',
+    'nombres', 'Brownie Artesanal Demo',
     'descripcion', 'Brownie húmedo de chocolate intenso.',
     'precio', 10,
     'precio_venta', 10,
@@ -390,7 +399,10 @@ begin
 
   payload := jsonb_build_object(
     'nombre', 'Chocolate bitter demo',
+    'nombres', 'Chocolate bitter demo',
     'unidad', 'kg',
+    'unidad_medida', 'kg',
+    'medida', 'kg',
     'stock', 12,
     'stock_actual', 12,
     'stock_minimo', 3,
@@ -404,7 +416,10 @@ begin
 
   payload := jsonb_build_object(
     'nombre', 'Harina pastelera demo',
+    'nombres', 'Harina pastelera demo',
     'unidad', 'kg',
+    'unidad_medida', 'kg',
+    'medida', 'kg',
     'stock', 25,
     'stock_actual', 25,
     'stock_minimo', 5,
@@ -417,6 +432,9 @@ begin
   insumo_harina := coalesce(pg_temp.kalu_find_pk_value('insumos', insumo_name_col, 'Harina pastelera demo'), insumo_chocolate);
 
   pedido_1 := jsonb_build_object(
+    'numero_pedido', 'KALU-DEMO-001',
+    'codigo', 'KALU-DEMO-001',
+    'codigo_pedido', 'KALU-DEMO-001',
     'cliente_id', cliente_ana,
     'estado_id', estado_pedido_id,
     'estado_pedido_id', estado_pedido_id,
@@ -430,9 +448,15 @@ begin
     'created_at', now()::text
   );
   perform pg_temp.kalu_insert_json('pedidos', pedido_1);
-  pedido_1_id := pg_temp.kalu_first_pk_value('pedidos');
+  pedido_1_id := coalesce(
+    pg_temp.kalu_find_pk_value('pedidos', 'numero_pedido', 'KALU-DEMO-001'),
+    pg_temp.kalu_first_pk_value('pedidos')
+  );
 
   pedido_2 := jsonb_build_object(
+    'numero_pedido', 'KALU-DEMO-002',
+    'codigo', 'KALU-DEMO-002',
+    'codigo_pedido', 'KALU-DEMO-002',
     'cliente_id', cliente_luis,
     'estado_id', estado_pedido_id,
     'estado_pedido_id', estado_pedido_id,
@@ -446,10 +470,15 @@ begin
     'created_at', now()::text
   );
   perform pg_temp.kalu_insert_json('pedidos', pedido_2);
-  pedido_2_id := pg_temp.kalu_first_pk_value('pedidos');
+  pedido_2_id := coalesce(
+    pg_temp.kalu_find_pk_value('pedidos', 'numero_pedido', 'KALU-DEMO-002'),
+    pg_temp.kalu_first_pk_value('pedidos')
+  );
 
   perform pg_temp.kalu_insert_json('detalle_pedidos', jsonb_build_object(
+    'id_pedido', pedido_1_id,
     'pedido_id', pedido_1_id,
+    'id_producto', producto_torta,
     'producto_id', producto_torta,
     'cantidad', 1,
     'precio', 65,
@@ -460,7 +489,9 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('detalle_pedidos', jsonb_build_object(
+    'id_pedido', pedido_2_id,
     'pedido_id', pedido_2_id,
+    'id_producto', producto_brownie,
     'producto_id', producto_brownie,
     'cantidad', 2,
     'precio', 10,
@@ -471,7 +502,9 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('pagos', jsonb_build_object(
+    'id_pedido', pedido_1_id,
     'pedido_id', pedido_1_id,
+    'id_metodo_pago', metodo_pago_id,
     'metodo_pago_id', metodo_pago_id,
     'monto', 65,
     'total', 65,
@@ -482,7 +515,9 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('pagos', jsonb_build_object(
+    'id_pedido', pedido_2_id,
     'pedido_id', pedido_2_id,
+    'id_metodo_pago', metodo_pago_id,
     'metodo_pago_id', metodo_pago_id,
     'monto', 20,
     'total', 20,
@@ -493,6 +528,7 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('ingresos', jsonb_build_object(
+    'id_pedido', pedido_1_id,
     'pedido_id', pedido_1_id,
     'monto', 65,
     'total', 65,
@@ -503,6 +539,7 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('ingresos', jsonb_build_object(
+    'id_pedido', pedido_2_id,
     'pedido_id', pedido_2_id,
     'monto', 20,
     'total', 20,
@@ -513,6 +550,7 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('movimientos_inventario', jsonb_build_object(
+    'id_insumo', insumo_chocolate,
     'insumo_id', insumo_chocolate,
     'tipo', 'entrada',
     'tipo_movimiento', 'entrada',
@@ -524,6 +562,7 @@ begin
   ));
 
   perform pg_temp.kalu_insert_json('movimientos_inventario', jsonb_build_object(
+    'id_insumo', insumo_harina,
     'insumo_id', insumo_harina,
     'tipo', 'entrada',
     'tipo_movimiento', 'entrada',
