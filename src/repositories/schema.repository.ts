@@ -1,9 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dashboardCoreTables } from "@/config/supabase-schema";
-import type { SchemaColumn, SchemaOverview, SchemaTable } from "@/types/database";
+import type { SchemaOverview, SchemaTable } from "@/types/database";
 import { withTimeout } from "@/utils/with-timeout";
-
-type ReadResult = { data: unknown; error: unknown };
 
 export class SchemaRepository {
   constructor(private readonly supabase: SupabaseClient | null) {}
@@ -32,8 +30,8 @@ export class SchemaRepository {
       dashboardCoreTables.map(async (tableName): Promise<SchemaTable> => {
         try {
           console.info("[Supabase] Detectando tabla", { table: tableName });
-          const { data, error } = await withTimeout<ReadResult>(
-            this.supabase!.from(tableName).select("*").limit(1) as PromiseLike<ReadResult>,
+          const { count, error } = await withTimeout<{ count: number | null; error: unknown }>(
+            this.supabase!.from(tableName).select("*", { count: "exact", head: true }) as PromiseLike<{ count: number | null; error: unknown }>,
             3500,
             `Deteccion ${tableName}`
           );
@@ -49,23 +47,12 @@ export class SchemaRepository {
             };
           }
 
-          const firstRow = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
-          const columns: SchemaColumn[] = firstRow
-            ? Object.keys(firstRow).map((columnName) => ({
-                tableName,
-                columnName,
-                dataType: typeof firstRow[columnName],
-                isNullable: firstRow[columnName] === null,
-                columnDefault: null
-              }))
-            : [];
-
-          console.info("[Supabase] Tabla detectada", { table: tableName, exists: true, records: Array.isArray(data) ? data.length : 0, columns: columns.length });
+          console.info("[Supabase] Tabla detectada", { table: tableName, exists: true, records: count ?? 0, columns: 0 });
 
           return {
             name: tableName,
             schema: "public",
-            columns,
+            columns: [],
             available: true
           };
         } catch (error) {
