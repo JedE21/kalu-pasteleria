@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { realSupabaseTables } from "@/config/supabase-schema";
+import { dashboardCoreTables } from "@/config/supabase-schema";
 import type { SchemaColumn, SchemaOverview, SchemaTable } from "@/types/database";
 
 export class SchemaRepository {
@@ -26,7 +26,7 @@ export class SchemaRepository {
     const warnings: string[] = [];
 
     const tables = await Promise.all(
-      realSupabaseTables.map(async (tableName): Promise<SchemaTable> => {
+      dashboardCoreTables.map(async (tableName): Promise<SchemaTable> => {
         try {
           console.info("[Supabase] Detectando tabla", { table: tableName });
           const { data, error } = await this.supabase!.from(tableName).select("*").limit(1);

@@ -50,8 +50,18 @@ export const realSupabaseTables = [
 
 export type RealSupabaseTable = (typeof realSupabaseTables)[number];
 
+export const dashboardCoreTables = [
+  "pedidos",
+  "productos",
+  "clientes",
+  "ingresos",
+  "pagos",
+  "insumos",
+  "movimientos_inventario"
+] as const satisfies readonly RealSupabaseTable[];
+
 export const moduleTableMap: Record<string, RealSupabaseTable[]> = {
-  ventas: ["pedidos", "pagos", "ingresos", "detalle_pedidos", "metodos_pago"],
+  ventas: ["pedidos", "pagos", "ingresos"],
   productos: ["productos", "variantes_producto", "producto_imagenes", "producto_etiquetas", "producto_etiqueta_rel"],
   categorias: ["categorias", "subcategorias"],
   promociones: ["promociones", "promocion_productos", "promocion_reglas"],
@@ -59,7 +69,7 @@ export const moduleTableMap: Record<string, RealSupabaseTable[]> = {
   clientes: ["clientes", "cliente_segmento", "segmentos_clientes", "direcciones_cliente"],
   delivery: ["entregas", "seguimiento_entrega", "repartidores"],
   produccion: ["producciones", "detalle_produccion", "estados_produccion"],
-  inventario: ["insumos", "movimientos_inventario", "compras_insumos", "detalle_compra_insumos", "proveedores"],
+  inventario: ["insumos", "movimientos_inventario"],
   "recetas-costeo": ["recetas", "receta_insumos", "insumos", "productos"],
   finanzas: ["ingresos", "gastos", "pagos", "categorias_gasto", "metodos_pago"],
   reportes: ["metricas_dashboard", "pedidos", "pagos", "ingresos", "gastos"],
