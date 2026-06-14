@@ -23,7 +23,7 @@ function EmptyChart() {
   return <div className="grid h-[260px] place-items-center rounded-xl border border-dashed border-stone-200 text-center text-sm text-stone-500 dark:border-white/10 dark:text-stone-400">Sin datos disponibles. El modulo se llenara automaticamente desde Supabase.</div>;
 }
 
-export function SalesAreaChart({ data }: { data: ChartPoint[] }) {
+export function VentasAreaChart({ data }: { data: ChartPoint[] }) {
   return (
     <Card className="xl:col-span-2">
       <CardTitle>Ventas últimos 30 días</CardTitle>
@@ -32,7 +32,7 @@ export function SalesAreaChart({ data }: { data: ChartPoint[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
               <defs>
-                <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="ventasGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F8C8DC" stopOpacity={0.85} />
                   <stop offset="95%" stopColor="#F8C8DC" stopOpacity={0.05} />
                 </linearGradient>
@@ -41,7 +41,7 @@ export function SalesAreaChart({ data }: { data: ChartPoint[] }) {
               <XAxis dataKey="name" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Area type="monotone" dataKey="value" stroke="#8B5E3C" strokeWidth={3} fill="url(#salesGradient)" />
+              <Area type="monotone" dataKey="value" stroke="#8B5E3C" strokeWidth={3} fill="url(#ventasGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         ) : (

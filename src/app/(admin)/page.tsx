@@ -1,4 +1,4 @@
-import { DonutChart, RankingChart, SalesAreaChart } from "@/components/dashboard/charts";
+import { DonutChart, RankingChart, VentasAreaChart } from "@/components/dashboard/charts";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { WarningPanel } from "@/components/dashboard/warning-panel";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +35,14 @@ export default async function DashboardPage() {
       <KpiGrid kpis={metrics.kpis} />
 
       <section className="grid gap-4 xl:grid-cols-3">
-        <SalesAreaChart data={metrics.salesLast30Days} />
-        <DonutChart title="Pedidos por estado" data={metrics.ordersByStatus} />
+        <VentasAreaChart data={metrics.ventasUltimos30Dias} />
+        <DonutChart title="Pedidos por estado" data={metrics.pedidosPorEstado} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <RankingChart title="Ventas por categoría" data={metrics.salesByCategory} />
-        <RankingChart title="Productos más vendidos" data={metrics.topProducts} />
-        <RankingChart title="Productos más rentables" data={metrics.profitableProducts} />
+        <RankingChart title="Ventas por categoría" data={metrics.ventasPorCategoria} />
+        <RankingChart title="Productos más vendidos" data={metrics.productosMasVendidos} />
+        <RankingChart title="Productos más rentables" data={metrics.productosMasRentables} />
         <Card>
           <CardTitle>Business Intelligence</CardTitle>
           <div className="mt-5 space-y-3 text-sm text-stone-600 dark:text-stone-300">

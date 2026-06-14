@@ -46,11 +46,11 @@ export type ChartPoint = {
 
 export type DashboardMetrics = {
   kpis: Kpi[];
-  salesLast30Days: ChartPoint[];
-  salesByCategory: ChartPoint[];
-  topProducts: ChartPoint[];
-  profitableProducts: ChartPoint[];
-  ordersByStatus: ChartPoint[];
+  ventasUltimos30Dias: ChartPoint[];
+  ventasPorCategoria: ChartPoint[];
+  productosMasVendidos: ChartPoint[];
+  productosMasRentables: ChartPoint[];
+  pedidosPorEstado: ChartPoint[];
   warnings: string[];
 };
 

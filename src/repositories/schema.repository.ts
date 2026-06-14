@@ -1,33 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ForeignKeyRelation, SchemaColumn, SchemaOverview, SchemaTable } from "@/types/database";
-
-const expectedTables = [
-  "ventas",
-  "sales",
-  "pedidos",
-  "orders",
-  "productos",
-  "products",
-  "categorias",
-  "categories",
-  "clientes",
-  "customers",
-  "promociones",
-  "promotions",
-  "inventario",
-  "inventory",
-  "alertas",
-  "alerts"
-];
-
-type RpcSchemaResponse = {
-  tables?: Array<{
-    name: string;
-    schema?: string;
-    columns?: SchemaColumn[];
-  }>;
-  relations?: ForeignKeyRelation[];
-};
+import { realSupabaseTables } from "@/config/supabase-schema";
+import type { SchemaColumn, SchemaOverview, SchemaTable } from "@/types/database";
 
 export class SchemaRepository {
   constructor(private readonly supabase: SupabaseClient | null) {}
@@ -42,38 +15,7 @@ export class SchemaRepository {
       };
     }
 
-    const rpcOverview = await this.getRpcOverview();
-    if (rpcOverview) {
-      return rpcOverview;
-    }
-
     return this.probeExpectedTables();
-  }
-
-  private async getRpcOverview(): Promise<SchemaOverview | null> {
-    if (!this.supabase) {
-      return null;
-    }
-
-    const { data, error } = await this.supabase.rpc("get_schema_overview");
-    if (error || !data) {
-      return null;
-    }
-
-    const payload = data as RpcSchemaResponse;
-    const tables = (payload.tables ?? []).map<SchemaTable>((table) => ({
-      name: table.name,
-      schema: table.schema ?? "public",
-      columns: table.columns ?? [],
-      available: true
-    }));
-
-    return {
-      connected: true,
-      tables,
-      relations: payload.relations ?? [],
-      warnings: tables.length ? [] : ["La funcion get_schema_overview no devolvio tablas."]
-    };
   }
 
   private async probeExpectedTables(): Promise<SchemaOverview> {
@@ -81,15 +23,46 @@ export class SchemaRepository {
       return { connected: false, tables: [], relations: [], warnings: [] };
     }
 
-    const warnings: string[] = [
-      "No se encontro una funcion RPC get_schema_overview; se uso deteccion tolerante de tablas esperadas."
-    ];
+    const warnings: string[] = [];
 
     const tables = await Promise.all(
-      expectedTables.map(async (tableName): Promise<SchemaTable> => {
-        const { error } = await this.supabase!.from(tableName).select("*", { count: "exact", head: true });
+      realSupabaseTables.map(async (tableName): Promise<SchemaTable> => {
+        try {
+          console.info("[Supabase] Detectando tabla", { table: tableName });
+          const { data, error } = await this.supabase!.from(tableName).select("*").limit(1);
 
-        if (error) {
+          if (error) {
+            console.warn("[Supabase] Tabla no disponible", { table: tableName, error });
+            return {
+              name: tableName,
+              schema: "public",
+              columns: [],
+              available: false,
+              warning: `Tabla ${tableName} no disponible o sin permisos de lectura.`
+            };
+          }
+
+          const firstRow = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+          const columns: SchemaColumn[] = firstRow
+            ? Object.keys(firstRow).map((columnName) => ({
+                tableName,
+                columnName,
+                dataType: typeof firstRow[columnName],
+                isNullable: firstRow[columnName] === null,
+                columnDefault: null
+              }))
+            : [];
+
+          console.info("[Supabase] Tabla detectada", { table: tableName, exists: true, records: Array.isArray(data) ? data.length : 0, columns: columns.length });
+
+          return {
+            name: tableName,
+            schema: "public",
+            columns,
+            available: true
+          };
+        } catch (error) {
+          console.error("[Supabase] Excepcion detectando tabla", { table: tableName, error });
           return {
             name: tableName,
             schema: "public",
@@ -98,13 +71,6 @@ export class SchemaRepository {
             warning: `Tabla ${tableName} no disponible o sin permisos de lectura.`
           };
         }
-
-        return {
-          name: tableName,
-          schema: "public",
-          columns: [],
-          available: true
-        };
       })
     );
 

@@ -2,27 +2,9 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
 import { navigationItems } from "@/config/navigation";
+import { moduleTableMap } from "@/config/supabase-schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AnalyticsRepository } from "@/repositories/analytics.repository";
-
-const moduleTableMap: Record<string, string[]> = {
-  ventas: ["ventas", "sales"],
-  productos: ["productos", "products"],
-  categorias: ["categorias", "categories"],
-  promociones: ["promociones", "promotions"],
-  pedidos: ["pedidos", "orders"],
-  clientes: ["clientes", "customers"],
-  delivery: ["delivery", "entregas", "deliveries"],
-  produccion: ["produccion", "production"],
-  inventario: ["inventario", "inventory"],
-  "recetas-costeo": ["recetas", "recipes", "costos", "costing"],
-  finanzas: ["finanzas", "finance", "gastos", "expenses"],
-  reportes: ["reportes", "reports"],
-  alertas: ["alertas", "alerts"],
-  administracion: ["usuarios", "profiles", "roles"],
-  "business-intelligence": ["ventas", "sales", "productos", "products"],
-  configuracion: ["configuracion", "settings"]
-};
 
 export default async function ModulePage({ params }: { params: Promise<{ module: string }> }) {
   const { module } = await params;

@@ -1,11 +1,12 @@
 import { AnalyticsRepository, type RawRecord } from "@/repositories/analytics.repository";
 import type { ChartPoint, DashboardMetrics, Kpi } from "@/types/database";
 
-const salesTables = ["ventas", "sales", "orders", "pedidos"];
-const ordersTables = ["pedidos", "orders", "ventas", "sales"];
-const productsTables = ["productos", "products"];
-const customersTables = ["clientes", "customers"];
-const alertsTables = ["alertas", "alerts"];
+const commercialTables = ["pedidos", "pagos", "ingresos"] as const;
+const pedidosTables = ["pedidos"] as const;
+const productosTables = ["productos"] as const;
+const clientesTables = ["clientes"] as const;
+const alertsTables = ["alertas"] as const;
+const dashboardTables = ["metricas_dashboard"] as const;
 
 function asNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -34,7 +35,7 @@ function pickString(row: RawRecord, keys: string[], fallback = "Sin clasificar")
 }
 
 function pickDate(row: RawRecord): Date | null {
-  return asDate(row.created_at ?? row.fecha ?? row.order_date ?? row.sale_date ?? row.createdAt);
+  return asDate(row.created_at ?? row.fecha);
 }
 
 function formatCurrency(value: number) {
@@ -85,38 +86,39 @@ export class DashboardService {
 
   async getMetrics(): Promise<DashboardMetrics> {
     const warnings: string[] = [];
-    const [sales, orders, products, customers, alerts] = await Promise.all([
-      this.analytics.readFirstAvailable(salesTables),
-      this.analytics.readFirstAvailable(ordersTables),
-      this.analytics.readFirstAvailable(productsTables),
-      this.analytics.readFirstAvailable(customersTables),
-      this.analytics.countFirstAvailable(alertsTables)
+    const [dashboardRows, commercial, pedidos, productos, clientes, alerts] = await Promise.all([
+      this.analytics.readFirstAvailable([...dashboardTables]),
+      this.analytics.readFirstAvailable([...commercialTables]),
+      this.analytics.readFirstAvailable([...pedidosTables]),
+      this.analytics.readFirstAvailable([...productosTables]),
+      this.analytics.readFirstAvailable([...clientesTables]),
+      this.analytics.countFirstAvailable([...alertsTables])
     ]);
 
-    [sales.warning, orders.warning, products.warning, customers.warning, alerts.warning]
+    [dashboardRows.warning, commercial.warning, pedidos.warning, productos.warning, clientes.warning, alerts.warning]
       .filter(Boolean)
       .forEach((warning) => warnings.push(warning as string));
 
     const todayKey = new Date().toISOString().slice(0, 10);
     const monthKey = new Date().toISOString().slice(0, 7);
-    const salesRows = sales.rows;
-    const orderRows = orders.rows;
-    const customerRows = customers.rows;
-    const productRows = products.rows;
+    const commercialRows = commercial.rows;
+    const pedidoRows = pedidos.rows;
+    const clienteRows = clientes.rows;
+    const productoRows = productos.rows;
 
-    const todaySales = salesRows
+    const todaySales = commercialRows
       .filter((row) => pickDate(row)?.toISOString().slice(0, 10) === todayKey)
       .reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0);
 
-    const monthSales = salesRows
+    const monthSales = commercialRows
       .filter((row) => pickDate(row)?.toISOString().slice(0, 7) === monthKey)
       .reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0);
 
-    const todayOrders = orderRows.filter((row) => pickDate(row)?.toISOString().slice(0, 10) === todayKey).length;
-    const averageTicketRaw = salesRows.length ? salesRows.reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0) / salesRows.length : 0;
+    const todayOrders = pedidoRows.filter((row) => pickDate(row)?.toISOString().slice(0, 10) === todayKey).length;
+    const averageTicketRaw = commercialRows.length ? commercialRows.reduce((sum, row) => sum + pickNumber(row, ["total", "monto", "amount", "importe", "precio_total"]), 0) / commercialRows.length : 0;
     const averageTicket = Number.isFinite(averageTicketRaw) ? averageTicketRaw : 0;
-    const newCustomers = customerRows.filter((row) => pickDate(row)?.toISOString().slice(0, 7) === monthKey).length;
-    const activeProducts = productRows.filter((row) => row.activo === true || row.active === true || row.estado === "activo" || row.status === "active").length || productRows.length;
+    const newCustomers = clienteRows.filter((row) => pickDate(row)?.toISOString().slice(0, 7) === monthKey).length;
+    const activeProducts = productoRows.filter((row) => row.activo === true || row.estado === "activo").length || productoRows.length;
 
     const kpis: Kpi[] = [
       { label: "Ventas Hoy", value: formatCurrency(todaySales), change: "+0.0%", trend: "flat", severity: "success" },
@@ -131,11 +133,11 @@ export class DashboardService {
 
     return {
       kpis,
-      salesLast30Days: buildSalesTimeline(salesRows),
-      salesByCategory: groupSum(salesRows, ["categoria", "category", "categoria_nombre"], ["total", "monto", "amount", "importe"]),
-      topProducts: groupSum(salesRows, ["producto", "product", "producto_nombre", "nombre"], ["cantidad", "quantity", "qty", "total"]),
-      profitableProducts: groupSum(productRows, ["nombre", "name", "producto"], ["margen", "margin", "utilidad", "profit"]),
-      ordersByStatus: groupSum(orderRows, ["estado", "status"], ["total", "monto", "amount", "cantidad"]),
+      ventasUltimos30Dias: buildSalesTimeline(commercialRows),
+      ventasPorCategoria: groupSum(commercialRows, ["categoria", "categoria_nombre"], ["total", "monto", "importe"]),
+      productosMasVendidos: groupSum(commercialRows, ["producto", "producto_nombre", "nombre"], ["cantidad", "total"]),
+      productosMasRentables: groupSum(productoRows, ["nombre", "producto"], ["margen", "utilidad"]),
+      pedidosPorEstado: groupSum(pedidoRows, ["estado"], ["total", "monto", "cantidad"]),
       warnings
     };
   }

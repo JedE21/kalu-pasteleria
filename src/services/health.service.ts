@@ -34,14 +34,26 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
     ];
   }
 
-  return Promise.all([
-    timedCheck("Supabase", async () => {
-      const { error } = await supabase.from("health_checks").select("*", { head: true, count: "exact" });
-      return error ? "Conectado; tabla health_checks no disponible." : "API Supabase responde.";
+    return Promise.all([
+      timedCheck("Supabase", async () => {
+      console.info("[Supabase] Health check consultando tabla", { table: "configuracion_empresa" });
+      const { count, error } = await supabase.from("configuracion_empresa").select("*", { head: true, count: "exact" });
+      if (error) {
+        console.warn("[Supabase] Health check fallo", { table: "configuracion_empresa", error });
+        return "Supabase responde, pero configuracion_empresa no esta disponible para lectura.";
+      }
+      console.info("[Supabase] Health check correcto", { table: "configuracion_empresa", exists: true, records: count ?? 0 });
+      return "API Supabase responde.";
     }),
     timedCheck("PostgreSQL", async () => {
-      const { error } = await supabase.rpc("now");
-      return error ? "PostgreSQL responde por PostgREST; RPC now no expuesta." : "PostgreSQL operativo.";
+      console.info("[Supabase] Health check consultando tabla", { table: "pedidos" });
+      const { count, error } = await supabase.from("pedidos").select("*", { head: true, count: "exact" });
+      if (error) {
+        console.warn("[Supabase] Health check fallo", { table: "pedidos", error });
+        return "PostgreSQL responde por Supabase, pero pedidos no esta disponible para lectura.";
+      }
+      console.info("[Supabase] Health check correcto", { table: "pedidos", exists: true, records: count ?? 0 });
+      return "PostgreSQL operativo.";
     }),
     timedCheck("Auth", async () => {
       const { error } = await supabase.auth.getSession();
