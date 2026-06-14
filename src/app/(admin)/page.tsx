@@ -8,6 +8,9 @@ import { AnalyticsRepository } from "@/repositories/analytics.repository";
 import { SchemaRepository } from "@/repositories/schema.repository";
 import { DashboardService } from "@/services/dashboard.service";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage() {
   const supabase = createSupabaseServerClient("anon");
   const metrics = await new DashboardService(new AnalyticsRepository(supabase)).getMetrics();

@@ -4,6 +4,9 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { getSystemHealth } from "@/services/health.service";
 import type { HealthCheck } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function StatusIcon({ status }: { status: HealthCheck["status"] }) {
   if (status === "operational") return <CheckCircle2 className="text-emerald-500" size={22} />;
   if (status === "error") return <CircleX className="text-rose-500" size={22} />;

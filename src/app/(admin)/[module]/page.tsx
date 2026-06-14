@@ -6,6 +6,9 @@ import { moduleTableMap } from "@/config/supabase-schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AnalyticsRepository } from "@/repositories/analytics.repository";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ModulePage({ params }: { params: Promise<{ module: string }> }) {
   const { module } = await params;
   const navItem = navigationItems.find((item) => item.href === `/${module}`);
