@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dashboardCoreTables } from "@/config/supabase-schema";
 import type { SchemaColumn, SchemaOverview, SchemaTable } from "@/types/database";
+import { withTimeout } from "@/utils/with-timeout";
+
+type ReadResult = { data: unknown; error: unknown };
 
 export class SchemaRepository {
   constructor(private readonly supabase: SupabaseClient | null) {}
@@ -29,7 +32,11 @@ export class SchemaRepository {
       dashboardCoreTables.map(async (tableName): Promise<SchemaTable> => {
         try {
           console.info("[Supabase] Detectando tabla", { table: tableName });
-          const { data, error } = await this.supabase!.from(tableName).select("*").limit(1);
+          const { data, error } = await withTimeout<ReadResult>(
+            this.supabase!.from(tableName).select("*").limit(1) as PromiseLike<ReadResult>,
+            3500,
+            `Deteccion ${tableName}`
+          );
 
           if (error) {
             console.warn("[Supabase] Tabla no disponible", { table: tableName, error });

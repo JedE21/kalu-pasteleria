@@ -1,5 +1,9 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { HealthCheck } from "@/types/database";
+import { withTimeout } from "@/utils/with-timeout";
+
+type CountResult = { count: number | null; error: unknown };
+type ErrorResult = { error: unknown };
 
 async function timedCheck(name: string, check: () => Promise<string>): Promise<HealthCheck> {
   const started = Date.now();
@@ -37,7 +41,11 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
     return Promise.all([
       timedCheck("Supabase", async () => {
       console.info("[Supabase] Health check consultando tabla", { table: "configuracion_empresa" });
-      const { count, error } = await supabase.from("configuracion_empresa").select("*", { head: true, count: "exact" });
+      const { count, error } = await withTimeout<CountResult>(
+        supabase.from("configuracion_empresa").select("*", { head: true, count: "exact" }) as PromiseLike<CountResult>,
+        4500,
+        "Health configuracion_empresa"
+      );
       if (error) {
         console.warn("[Supabase] Health check fallo", { table: "configuracion_empresa", error });
         return "Supabase responde, pero configuracion_empresa no esta disponible para lectura.";
@@ -47,7 +55,11 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
     }),
     timedCheck("PostgreSQL", async () => {
       console.info("[Supabase] Health check consultando tabla", { table: "pedidos" });
-      const { count, error } = await supabase.from("pedidos").select("*", { head: true, count: "exact" });
+      const { count, error } = await withTimeout<CountResult>(
+        supabase.from("pedidos").select("*", { head: true, count: "exact" }) as PromiseLike<CountResult>,
+        4500,
+        "Health pedidos"
+      );
       if (error) {
         console.warn("[Supabase] Health check fallo", { table: "pedidos", error });
         return "PostgreSQL responde por Supabase, pero pedidos no esta disponible para lectura.";
@@ -56,11 +68,11 @@ export async function getSystemHealth(): Promise<HealthCheck[]> {
       return "PostgreSQL operativo.";
     }),
     timedCheck("Auth", async () => {
-      const { error } = await supabase.auth.getSession();
+      const { error } = await withTimeout<ErrorResult>(supabase.auth.getSession(), 3500, "Health Auth");
       return error ? "Auth responde con advertencia." : "Auth operativo.";
     }),
     timedCheck("Storage", async () => {
-      const { error } = await supabase.storage.listBuckets();
+      const { error } = await withTimeout<ErrorResult>(supabase.storage.listBuckets(), 4500, "Health Storage");
       return error ? "Storage requiere permisos para listar buckets." : "Storage operativo.";
     }),
     timedCheck("Realtime", async () => "Realtime configurado en cliente Supabase.")

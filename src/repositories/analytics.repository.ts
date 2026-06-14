@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isRealSupabaseTable, type RealSupabaseTable } from "@/config/supabase-schema";
+import { withTimeout } from "@/utils/with-timeout";
 
 export type RawRecord = Record<string, unknown>;
+type ReadResult = { data: unknown; error: unknown };
+type CountResult = { count: number | null; error: unknown };
 
 export class AnalyticsRepository {
   constructor(private readonly supabase: SupabaseClient | null) {}
@@ -20,7 +23,11 @@ export class AnalyticsRepository {
 
       try {
         console.info("[Supabase] Consultando tabla", { table, columns, limit });
-        const { data, error } = await this.supabase.from(table).select(columns).limit(limit);
+        const { data, error } = await withTimeout<ReadResult>(
+          this.supabase.from(table).select(columns).limit(limit) as PromiseLike<ReadResult>,
+          4500,
+          `Lectura ${table}`
+        );
 
         if (error) {
           console.warn("[Supabase] Error al consultar tabla", { table, error });
@@ -56,7 +63,11 @@ export class AnalyticsRepository {
 
       try {
         console.info("[Supabase] Contando tabla", { table });
-        const { count, error } = await this.supabase.from(table).select("*", { count: "exact", head: true });
+        const { count, error } = await withTimeout<CountResult>(
+          this.supabase.from(table).select("*", { count: "exact", head: true }) as PromiseLike<CountResult>,
+          4500,
+          `Conteo ${table}`
+        );
 
         if (error) {
           console.warn("[Supabase] Error al contar tabla", { table, error });
